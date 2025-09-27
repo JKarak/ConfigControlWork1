@@ -76,43 +76,51 @@ class OSEmulator:
 
     def run_startup_script(self):
         if not self.script_path or not os.path.exists(self.script_path): # проверяем путь и существование файла
-            self.display_message(f"Ошибка: скрипт '{self.script_path}' не найден\n") # сообщение об ошибке если файл не найден
+            self.display_message(f"Ошибка: скрипт '{self.script_path}' не найден\n")
             return
-        
+
         self.display_message(f"\n=== Выполнение скрипта: {self.script_path} ===\n") # заголовок начала выполнения скрипта
         
-        try: # обрабатываем ошибки 
-            with open(self.script_path, 'r', encoding='utf-8') as file: # открываем файл в режиме чтения
-                lines = file.readlines()  # читаем все строки файла в список
+        try: # обрабатываем ошибки
+            with open(self.script_path, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
 
             def execute_next_command(index=0): # рекурсивная функция для выполнения команд с задержкой
-                if index >= len(lines):  # если индекс больше количества строк
+                if index >= len(lines):
                     self.display_message("=== Выполнение скрипта завершено ===\n\n")
                     return
                 
                 line = lines[index].strip() # получаем текущую строку без пробелов по краям
-
-                if line.startswith('#'): # если строка начинается с символа комментария
-                    self.display_message(f"# {line[1:]}\n") # выводим комментарий
+                
+                if not line: # если строка пустая после удаления пробелов
+                    self.root.after(100, execute_next_command, index + 1) # переходим к следующей строке через 100 мс
                     return
-
+                
+                if line.startswith('#'): # если строка начинается с символа комментария
+                    self.display_message(f"# {line[1:]}\n")
+                    self.root.after(100, execute_next_command, index + 1)
+                    return
+                
                 self.display_message(f"{getpass.getuser()}@{socket.gethostname()} {line}\n")
                 
                 parts = line.split() # разделяем строку на части по пробелам
-                command = parts[0] # первое слово это команда
+                command = parts[0] # первое слово команда
                 args = parts[1:] if len(parts) > 1 else [] # остальные слова аргументы
 
-                # обработка команд из скрипта
                 if command == "exit":
+                    self.display_message("Завершение работы по скрипту...\n")
                     self.root.after(1000, self.root.quit) # завершаем программу через 1 секунду
                 elif command == "ls":
                     self.display_message("Команда 'ls' вызвана c аргументами: " + " ".join(args) + "\n")
+                    self.root.after(500, execute_next_command, index + 1)
                 elif command == "cd":
                     self.display_message("Команда 'cd' вызвана c аргументами: " + " ".join(args) + "\n")
+                    self.root.after(500, execute_next_command, index + 1)
                 else:
                     self.display_message(f"Ошибка: неизвестная команда '{command}'\n")
+                    self.root.after(500, execute_next_command, index + 1)
 
-            execute_next_command() # запускаем выполнение скрипта с первой строки
+            execute_next_command() # начальный вызов рекурсивной функции
             
         except Exception as e: # перехват исключений
             self.display_message(f"Ошибка при выполнении скрипта: {str(e)}\n")
