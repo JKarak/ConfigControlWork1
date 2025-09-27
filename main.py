@@ -2,13 +2,18 @@ import tkinter as tk
 from tkinter import scrolledtext
 import socket
 import getpass
+import os # модуль для работы с файловой системой
+import argparse # модуль для разбора аргументов командной строки
 
 class OSEmulator:
-    def __init__(self, root):
+    def __init__(self, root, vfs_path=None, script_path=None):
         self.root = root # сохраняем ссылку на главное окно приложения
         self.root.title(f"Эмулятор - [{getpass.getuser()}@{socket.gethostname()}]") # получаем имя пользователя и hostname и устанавливаем их как заголовок
         self.root.geometry("800x500") # устанавливаем размеры
-        self.root.minsize(800, 500)
+        self.root.minsize(800, 500) # устанавливаем минимальный размер окна
+
+        self.vfs_path = vfs_path # сохраняем путь к виртуальной файловой системе
+        self.script_path = script_path # сохраняем путь к стартовому скрипту
 
         self.output_area = scrolledtext.ScrolledText( # создаем текстовое поле с прокруткой для вывода
             root,
@@ -24,7 +29,17 @@ class OSEmulator:
         self.input_entry.pack(fill='x', padx=10, pady=5) # размещение поля и отступ
         self.input_entry.bind("<Return>", self.process_command) # привязываем обработчик нажатия Enter к функции process_command
 
+        # выводим информацию о параметрах запуска
+        self.display_message("=== Параметр запуска ===\n")
+        self.display_message(f"VFS путь: {vfs_path if vfs_path else 'не указан'}\n")
+        self.display_message(f"Скрипт: {script_path if script_path else 'не указан'}\n")
+        self.display_message("=======================\n\n")  # разделитель
+
         self.display_message("Добро пожаловать в эмулятор командной оболочки OC.\nВведите команду (например, ls, cd, exit).\n")
+
+        # если указан скрипт, планируем его запуск через 100 мс после инициализации GUI
+        if self.script_path:
+            self.root.after(100, self.run_startup_script)  # after()
 
 
     def display_message(self, message): # метод для вывода на экран
@@ -34,6 +49,7 @@ class OSEmulator:
         self.output_area.config(state='disabled') # блокируем режим редактирования поля
 
 
+
     def process_command(self, event): # метод для парсинга
         command_input = self.input_entry.get().strip() # получаем то что ввелось и обрезаем лишние пробелы
         self.input_entry.delete(0, tk.END) # очищаем поле ввода
@@ -41,7 +57,7 @@ class OSEmulator:
         if not command_input: # если введеная строка пустая, то выходим из функции
             return
 
-        self.display_message(f"{getpass.getuser()}@{socket.gethostname()} {command_input}\n") # выводим на экран введенную команду
+        self.display_message(f"{getpass.getuser()}@{socket.gethostname()}:~$ {command_input}\n") # выводим на экран введенную команду
 
         parts = command_input.split() # парсим по пробелам
         command = parts[0] # первый элемент списка - имя команды
@@ -49,6 +65,7 @@ class OSEmulator:
 
         if command == "exit": # если введена команда exit, выходим из эмулятора
             self.root.quit()
+            self.root.after(1000, self.root.quit) # завершаем программу через 1 секунду
         elif command == "ls": # если введена ls, выводим args через пробел
             self.display_message("Команда 'ls' вызвана c аргументами: " + " ".join(args) + "\n")
         elif command == "cd": # если введена cd, выводим args через пробел
@@ -57,7 +74,68 @@ class OSEmulator:
             self.display_message(f"Ошибка: неизвестная команда '{command}'\n")
 
 
+    def run_startup_script(self):
+        if not self.script_path or not os.path.exists(self.script_path): # проверяем путь и существование файла
+            self.display_message(f"Ошибка: скрипт '{self.script_path}' не найден\n") # сообщение об ошибке если файл не найден
+            return
+        
+        self.display_message(f"\n=== Выполнение скрипта: {self.script_path} ===\n") # заголовок начала выполнения скрипта
+        
+        try: # обрабатываем ошибки 
+            with open(self.script_path, 'r', encoding='utf-8') as file: # открываем файл в режиме чтения
+                lines = file.readlines()  # читаем все строки файла в список
+
+            def execute_next_command(index=0): # рекурсивная функция для выполнения команд с задержкой
+                if index >= len(lines):  # если индекс больше количества строк
+                    self.display_message("=== Выполнение скрипта завершено ===\n\n")
+                    return
+                
+                line = lines[index].strip() # получаем текущую строку без пробелов по краям
+
+                if line.startswith('#'): # если строка начинается с символа комментария
+                    self.display_message(f"# {line[1:]}\n") # выводим комментарий
+                    return
+
+                self.display_message(f"{getpass.getuser()}@{socket.gethostname()} {line}\n")
+                
+                parts = line.split() # разделяем строку на части по пробелам
+                command = parts[0] # первое слово это команда
+                args = parts[1:] if len(parts) > 1 else [] # остальные слова аргументы
+
+                # обработка команд из скрипта
+                if command == "exit":
+                    self.root.after(1000, self.root.quit) # завершаем программу через 1 секунду
+                elif command == "ls":
+                    self.display_message("Команда 'ls' вызвана c аргументами: " + " ".join(args) + "\n")
+                elif command == "cd":
+                    self.display_message("Команда 'cd' вызвана c аргументами: " + " ".join(args) + "\n")
+                else:
+                    self.display_message(f"Ошибка: неизвестная команда '{command}'\n")
+
+            execute_next_command() # запускаем выполнение скрипта с первой строки
+            
+        except Exception as e: # перехват исключений
+            self.display_message(f"Ошибка при выполнении скрипта: {str(e)}\n")
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Эмулятор командной оболочки OC') # создаем объект парсера
+    parser.add_argument('--vfs', type=str, help='Путь к физическому расположению VFS') # добавляем параметр --vfs
+    parser.add_argument('--script', type=str, help='Путь к стартовому скрипту') # добавляем параметр --script
+
+    args = parser.parse_args() # парсим аргументы командной строки
+    
+    print("=== Аргументы командной строки ===")
+    print(f"VFS путь: {args.vfs}")
+    print(f"Скрипт: {args.script}")
+    print("=================================")
+    
+    return args
+
+
 if __name__ == "__main__":
+    args = parse_arguments()
+
     root = tk.Tk() # создаем окно
-    app = OSEmulator(root) # создаем экземпляр OSEmulator
+    app = OSEmulator(root, vfs_path=args.vfs, script_path=args.script) # создаем экземпляр OSEmulator
     root.mainloop() # запускаем цикл обработки событий Tkinter
