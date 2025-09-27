@@ -7,7 +7,8 @@ class OSEmulator:
     def __init__(self, root):
         self.root = root # сохраняем ссылку на главное окно приложения
         self.root.title(f"Эмулятор - [{getpass.getuser()}@{socket.gethostname()}]") # получаем имя пользователя и hostname и устанавливаем их как заголовок
-        self.root.geometry("900x500") # устанавливаем размеры
+        self.root.geometry("800x500") # устанавливаем размеры
+        self.root.minsize(800, 500)
 
         self.output_area = scrolledtext.ScrolledText( # создаем текстовое поле с прокруткой для вывода
             root,
@@ -40,7 +41,7 @@ class OSEmulator:
         if not command_input: # если введеная строка пустая, то выходим из функции
             return
 
-        self.display_message(f"{command_input}\n") # выводим на экран введенную команду
+        self.display_message(f"{getpass.getuser()}@{socket.gethostname()} {command_input}\n") # выводим на экран введенную команду
 
         parts = command_input.split() # парсим по пробелам
         command = parts[0] # первый элемент списка - имя команды
