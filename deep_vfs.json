@@ -1,0 +1,45 @@
+{
+  "files": [
+    {
+      "name": "motd",
+      "type": "file",
+      "path": "/motd",
+      "content": "VFS с глубокой структурой папок",
+      "encoding": "plain"
+    },
+    {
+      "name": "projects",
+      "type": "directory", 
+      "path": "/projects"
+    },
+    {
+      "name": "project1",
+      "type": "directory",
+      "path": "/projects/project1"
+    },
+    {
+      "name": "src",
+      "type": "directory",
+      "path": "/projects/project1/src"
+    },
+    {
+      "name": "main.py",
+      "type": "file",
+      "path": "/projects/project1/src/main.py",
+      "content": "print('Hello World')",
+      "encoding": "plain"
+    },
+    {
+      "name": "config",
+      "type": "directory",
+      "path": "/projects/project1/config"
+    },
+    {
+      "name": "settings.json",
+      "type": "file", 
+      "path": "/projects/project1/config/settings.json",
+      "content": "eyJzZXR0aW5nIjogInZhbHVlIn0=",
+      "encoding": "base64"
+    }
+  ]
+}
